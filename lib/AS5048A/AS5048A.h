@@ -113,6 +113,6 @@ class AS5048A{
 
 	private:
 
-	uint8_t spiCalcEvenParity(uint16_t);
+	uint16_t spiCalcEvenParity(uint16_t);
 };
 #endif

@@ -73,7 +73,7 @@ void AS5048A::close(){
  * It computes the hamming weight using wikipedia article: https://en.wikipedia.org/wiki/Hamming_weight
  * checking if it's even.
  */
-uint8_t AS5048A::spiCalcEvenParity(uint16_t x){
+uint16_t AS5048A::spiCalcEvenParity(uint16_t x){
 	x -= (x >> 1) & mask_01;             //put count of each 2 bits into those 2 bits
     x = (x & mask_0011) + ((x >> 2) & mask_0011); //put count of each 4 bits into those 4 bits 
     x = (x + (x >> 4)) & mask_00001111;        //put count of each 8 bits into those 8 bits 
@@ -164,10 +164,12 @@ uint16_t AS5048A::getErrors(){
  * Set the zero position
  */
 bool AS5048A::setZeroPosition(uint16_t position){
-	uint8_t low_byte     = (position & 0x00FF);
+	uint8_t low_byte     = (position & 0b0000000000111111);
 	uint16_t result_low  = write(AS5048A_OTP_REGISTER_ZERO_POS_LOW, low_byte);
-	uint8_t high_byte    = (position & 0xFF00) >> 8;
+	Serial.println(result_low);
+	uint8_t high_byte    = (position >> 6 & 0b0000000011111111);
 	uint16_t result_high = write(AS5048A_OTP_REGISTER_ZERO_POS_HIGH, high_byte);
+	Serial.println(result_high);
 	return (result_high == high_byte) && (result_low == low_byte);
 }
 
@@ -265,7 +267,7 @@ uint16_t AS5048A::write(uint16_t registerAddress, uint16_t data) {
 	SPI.transfer16(command);
 	digitalWrite(_cs,HIGH);
 
-	uint16_t dataToSend = data | AS5048A_READ_FLAG;
+	uint16_t dataToSend = data | AS5048A_WRITE_FLAG;
 	dataToSend |= spiCalcEvenParity(dataToSend);
 
 #ifdef AS5048A_DEBUG
@@ -279,7 +281,9 @@ uint16_t AS5048A::write(uint16_t registerAddress, uint16_t data) {
 	if(response_delay_millis > 0) {
 		delay(response_delay_millis);
 	}
-
+	
+	SPI.endTransaction();
+	SPI.beginTransaction(settings);
 	//Send a NOP to get the new data in the register
 	digitalWrite(_cs, LOW);
 	uint16_t response = SPI.transfer16(AS5048A_NOP);
